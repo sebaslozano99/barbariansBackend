@@ -5,6 +5,24 @@ require("dotenv").config();
 
 
 
+const validateTokenOnPageReload = async (req, res) => {
+    const { token } = req.cookies;
+
+    if(!token) return res.status(401).json({message: "Invalid/Expired token!"});
+
+    jwt.verify(token, process.env.JWT_SECRET_KEY, (error, decoded) => {
+        if(error) return res.status(401).json({message: "Invalid token"});
+
+        // console.log(decoded);
+        const { id, first_name, last_name, email, role } = decoded;
+        return res.json({id, first_name, last_name, email, role});
+    })
+
+}
+
+
+
+
 const signup = async (req, res) => {
 
     const { first_name, last_name, email, password, role } = req.body;
@@ -24,10 +42,12 @@ const signup = async (req, res) => {
         const [result] = await database.execute(`INSERT INTO users (first_name, last_name, email, password, role) VALUES 
         (?, ?, ?, ?, ?)`, [first_name, last_name, email, hashedPassword, role]);
 
-        const token = jwt.sign({first_name, last_name, email, id: result.insertId}, process.env.JWT_SECRET_KEY, { expiresIn: "1h" });
+        const user = { id: result.insertId, first_name, last_name, email, role };
 
-        req.cookie("token", token, { httpOnly: true });
-        res.status(201).json({message: "user created successfully!"});
+        const token = jwt.sign( user, process.env.JWT_SECRET_KEY, { expiresIn: "1h" });
+
+        res.cookie("token", token, { httpOnly: true });
+        res.status(201).json({message: "user created successfully!", user});
 
     }
     catch(error){
@@ -47,16 +67,18 @@ const login = async (req, res) => {
         //Make sure exists an user with email provided
         const [rows] = await database.execute("SELECT * FROM users WHERE email = ?", [email]);
 
-        if(!rows.length) return res.status(404).json({message: "User with the email provided does not exist!"});
+        if(!rows.length) return res.status(404).json({message: "User doesn't exist!"});
 
         const isSamePassword = await bcrypt.compare(password, rows[0].password);
 
         if(!isSamePassword) return res.status(401).json({message: "Invalid password!"});
 
-        const token = jwt.sign({first_name, last_name, email, id: result.insertId}, process.env.JWT_SECRET_KEY, { expiresIn: "1h" });
+        const user = { id: rows[0].id, first_name: rows[0].first_name, last_name: rows[0].last_name, email, role: rows[0].role };
+
+        const token = jwt.sign(user , process.env.JWT_SECRET_KEY, { expiresIn: "1h" });
 
         res.cookie("token", token, { expiresIn: "1h" });
-        res.status(201).json({message: "logged in successfully!"});
+        res.status(201).json({message: "logged in successfully!", user});
     }
     catch(error){
         res.status(500).json({message: error.message || "Internal server error"});
@@ -67,7 +89,7 @@ const login = async (req, res) => {
 
 const logout = async (req, res) => {
     try{
-        req.clearCookie("token");
+        res.clearCookie("token");
         res.status(200).json({message: "Logged out sucessfully!"});
     }
     catch(error){
@@ -76,4 +98,4 @@ const logout = async (req, res) => {
 }
 
 
-module.exports = { signup, login, logout }
+module.exports = { signup, login, logout, validateTokenOnPageReload }

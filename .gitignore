@@ -3,3 +3,6 @@
 
 # ignore .env file
 .env
+
+# ignore uploads folder
+/uploads/
