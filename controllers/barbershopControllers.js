@@ -2,12 +2,72 @@ const database = require("../config/database.js");
 
 
 
+// GET request
+const profile = async (req, res) => {
+    const { userID } = req.params;
+
+    // step 01 -- begin transaction
+    const dbConnection = await database.getConnection();
+    await dbConnection.beginTransaction();
+
+    // step 02 -- execute all transactions
+    try {
+        // fetch barbershop's information
+        const [rows] = await dbConnection.execute(`
+        SELECT 
+            users.id AS user_id,
+            barbershops.id AS barbershop_id,
+            business_name,
+            description,
+            address,
+            open_time,
+            close_time,
+            phone
+        FROM users
+        INNER JOIN barbershops ON barbershops.user_id = ?
+        WHERE users.id = ?`, [userID, userID]);
+
+        const barbershopID = rows[0].barbershop_id;
+
+        //fetch barbershop's images
+        const [images] = await dbConnection.execute("SELECT id AS image_id, image_path FROM barbershop_images WHERE barbershop_id = ?", [barbershopID]);
+
+        // fetch barbershop's services
+        const [services] = await dbConnection.execute("SELECT service, price FROM barbershop_services WHERE barbershop_id = ?", [barbershopID]);
+
+        const barbershopInformation = { ...rows[0], images, services };
+        
+        // step 03 -- commit if all transactions go through successfully!
+        await dbConnection.commit();
+        
+        res.status(200).json({ barbershopInformation });
+
+    }
+    catch(error){
+        // step 03 -- rollback if any of the transactions fails
+        await dbConnection.rollback();
+        res.status(500).json({message: error.message || "Internal server error!"});
+    }
+    finally {
+        // step 04 -- release db connection
+        dbConnection.release();
+    }
+
+}
+
+
+
+
+// POST request
 const setup = async (req, res) => {
+
     const { user_id, business_name, description, address, open_time, close_time, phone, services } = req.body;
-    const imagesFiles = req.files; //array of objects with the file information
+    const imagesFiles = req.files;
 
     // services is an array of objects that was stringyfied in the FormData so that I could be read here
     const servicesObject = services.map((service) => JSON.parse(service));
+
+    // STEPS FOR ATOMIC transaction  -- Either all queries go through or all fail
 
     // step 01 -- start db transaction
     const dbConnection = await database.getConnection();
@@ -35,6 +95,7 @@ const setup = async (req, res) => {
 
     }
     catch(error){
+        
         // step 03 -- Rollback if something goes wrong
         await dbConnection.rollback();
         
@@ -58,10 +119,7 @@ const setup = async (req, res) => {
 
 
 
-const profile = (req, res) => {
-    
-    res.json({message: "PROFILE"});
-}
+
 
 
 

@@ -7,7 +7,7 @@ const barbershopRoutes = Router();
 
 
 
-barbershopRoutes.get("/profile", profile);
+barbershopRoutes.get("/profile/:userID", profile);
 barbershopRoutes.post("/setup", upload.array("images", 10) , setup);
 
 
