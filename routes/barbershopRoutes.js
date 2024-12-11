@@ -1,5 +1,5 @@
 const { Router } = require("express");
-const { setup, profile } = require("../controllers/barbershopControllers.js");
+const { getProfile, postBarbershop, editBarbershop } = require("../controllers/barbershopControllers.js");
 const upload = require("../config/multer.js");
 
 const barbershopRoutes = Router();
@@ -7,8 +7,9 @@ const barbershopRoutes = Router();
 
 
 
-barbershopRoutes.get("/profile/:userID", profile);
-barbershopRoutes.post("/setup", upload.array("images", 10) , setup);
+barbershopRoutes.get("/profile/:userID", getProfile);
+barbershopRoutes.post("/setup", upload.array("images", 10) , postBarbershop);
+barbershopRoutes.put("/edit/:userID", upload.array("images", 10), editBarbershop);
 
 
 

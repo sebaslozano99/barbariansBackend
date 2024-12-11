@@ -3,7 +3,7 @@ const database = require("../config/database.js");
 
 
 // GET request
-const profile = async (req, res) => {
+const getProfile = async (req, res) => {
     const { userID } = req.params;
 
     // step 01 -- begin transaction
@@ -27,6 +27,9 @@ const profile = async (req, res) => {
         INNER JOIN barbershops ON barbershops.user_id = ?
         WHERE users.id = ?`, [userID, userID]);
 
+        // send empty array
+        if(!rows.length) return res.status(200).json(rows);
+
         const barbershopID = rows[0].barbershop_id;
 
         //fetch barbershop's images
@@ -36,11 +39,11 @@ const profile = async (req, res) => {
         const [services] = await dbConnection.execute("SELECT service, price FROM barbershop_services WHERE barbershop_id = ?", [barbershopID]);
 
         const barbershopInformation = { ...rows[0], images, services };
-        
+
         // step 03 -- commit if all transactions go through successfully!
         await dbConnection.commit();
-        
-        res.status(200).json({ barbershopInformation });
+
+        res.status(200).json(barbershopInformation);
 
     }
     catch(error){
@@ -59,7 +62,7 @@ const profile = async (req, res) => {
 
 
 // POST request
-const setup = async (req, res) => {
+const postBarbershop = async (req, res) => {
 
     const { user_id, business_name, description, address, open_time, close_time, phone, services } = req.body;
     const imagesFiles = req.files;
@@ -91,7 +94,7 @@ const setup = async (req, res) => {
         // step 03 -- Commit if everything goes well
         await dbConnection.commit();
 
-        return res.json({ message: "Inserted data successfully!" });
+        return res.status(201).json({ message: "Inserted data successfully!" });
 
     }
     catch(error){
@@ -112,7 +115,7 @@ const setup = async (req, res) => {
         res.status(500).json({message: error.message || "Internal server error"});
     }
     finally {
-        // step 04 -- Realease the connection back to the pool
+        // step 04 -- Realease the connection back to the pool1
         dbConnection.release();
     }
 }
@@ -122,5 +125,65 @@ const setup = async (req, res) => {
 
 
 
+const editBarbershop = async (req, res) => {
+    const { userID } = req.params;
+    const { business_name, description, address, open_time, close_time, phone, services } = req.body;
+    const imagesFiles = req.files;
 
-module.exports = { setup, profile }
+
+    // services is an array of objects that was stringyfied in the FormData so that I could be read here
+    const servicesObject = services.map((service) => JSON.parse(service)); 
+
+
+    // step 01 -- start db transaction
+    const dbConnection = await database.getConnection();
+    await dbConnection.beginTransaction();
+
+    // step 02 -- execute all the transactions 
+    try {
+        // get user's barbershop's information
+        const [rows] = await dbConnection.execute("SELECT id FROM barbershops WHERE user_id = ?", [userID]);
+
+        const userBarbershopID = rows[0].id;
+
+        console.log("user id: ", userBarbershopID);
+
+        const [result] = await dbConnection.execute(`
+            UPDATE barbershops 
+                SET business_name = IFNULL(?, business_name),
+                    description = IFNULL(?, description),
+                    address = IFNULL(?, address),
+                    open_time = IFNULL(?, open_time),
+                    close_time = IFNULL(?, close_time),
+                    phone = IFNULL(?, phone) 
+            WHERE id = ?`, [business_name, description, address, open_time, close_time, phone, userBarbershopID]
+        );
+        
+
+
+
+        // step 03 -- Commit if everything goes well
+        await dbConnection.commit();
+
+        return res.status(201).json({ message: "Updated successfully!" });
+
+    }
+    catch(error){
+        
+        // step 03 -- Rollback if something goes wrong
+        await dbConnection.rollback();
+        
+        console.log( "Error updating data: ", error.message);
+
+        res.status(500).json({message: error.message || "Internal server error"});
+    }
+    finally {
+        // step 04 -- Realease the connection back to the pool1
+        dbConnection.release();
+    }
+}
+
+
+
+
+module.exports = { getProfile, postBarbershop, editBarbershop }

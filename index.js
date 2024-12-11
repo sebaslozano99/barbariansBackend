@@ -24,12 +24,12 @@ app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
-// app.use(express.static("uploads"));
+app.use(express.static("uploads"));
 
 
 // routes
-app.use("/api/auth/", userRoutes);
-app.use("/api/barbershop/", barbershopRoutes);
+app.use("/api/auth", userRoutes);
+app.use("/api/barbershop", barbershopRoutes);
 
 
 
