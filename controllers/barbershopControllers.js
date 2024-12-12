@@ -1,4 +1,5 @@
 const database = require("../config/database.js");
+const fs = require("fs");
 
 
 
@@ -94,7 +95,7 @@ const postBarbershop = async (req, res) => {
         // step 03 -- Commit if everything goes well
         await dbConnection.commit();
 
-        return res.status(201).json({ message: "Inserted data successfully!" });
+        return res.status(201).json({ message: "Barbershop set up successfully!" });
 
     }
     catch(error){
@@ -126,16 +127,16 @@ const postBarbershop = async (req, res) => {
 
 
 const editBarbershop = async (req, res) => {
+
     const { userID } = req.params;
     const { business_name, description, address, open_time, close_time, phone, services } = req.body;
     const imagesFiles = req.files;
 
+
     const servicesObject = services?.map((service) => JSON.parse(service)); 
 
-    // if(services) console.log("Services: ", services.length);
-    console.log("images: ", imagesFiles.length);
-
     const dbConnection = await database.getConnection();
+
     await dbConnection.beginTransaction();
 
     try {
@@ -156,16 +157,27 @@ const editBarbershop = async (req, res) => {
         );
 
         if(imagesFiles?.length > 0){
-            // Delete previous images 
+            // Get image_url of barbershop to delete from system
+            const [barbershop_images] = await dbConnection.execute("SELECT image_path FROM barbershop_images WHERE barbershop_id = ?", [userBarbershopID]);
+
+
             const [imagesDelete] = await dbConnection.execute("DELETE FROM barbershop_images WHERE barbershop_id = ?", [userBarbershopID]);
+
+            // Delete previous images from system
+            for(const image of barbershop_images) {
+                fs.unlink(__dirname + `../../uploads/${image.image_path}`, (err) => {
+                    if(err) console.log(`An error ocurred: ${err}`);
+                    else console.log("File delete successfully!");
+                })
+            }
     
-            // Insert new Ones
             for(const image of imagesFiles){
                 await dbConnection.execute("INSERT INTO barbershop_images (barbershop_id, image_path) VALUES (?, ?)", [userBarbershopID, image.filename])
             }
         }
 
         if(servicesObject?.length > 0){
+
             const [servicesDelete] = await dbConnection.execute("DELETE FROM barbershop_services WHERE barbershop_id = ?", [userBarbershopID]);
 
             for(const service of servicesObject){
