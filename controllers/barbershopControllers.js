@@ -130,23 +130,19 @@ const editBarbershop = async (req, res) => {
     const { business_name, description, address, open_time, close_time, phone, services } = req.body;
     const imagesFiles = req.files;
 
+    const servicesObject = services?.map((service) => JSON.parse(service)); 
 
-    // services is an array of objects that was stringyfied in the FormData so that I could be read here
-    const servicesObject = services.map((service) => JSON.parse(service)); 
+    // if(services) console.log("Services: ", services.length);
+    console.log("images: ", imagesFiles.length);
 
-
-    // step 01 -- start db transaction
     const dbConnection = await database.getConnection();
     await dbConnection.beginTransaction();
 
-    // step 02 -- execute all the transactions 
     try {
         // get user's barbershop's information
         const [rows] = await dbConnection.execute("SELECT id FROM barbershops WHERE user_id = ?", [userID]);
 
         const userBarbershopID = rows[0].id;
-
-        console.log("user id: ", userBarbershopID);
 
         const [result] = await dbConnection.execute(`
             UPDATE barbershops 
@@ -158,11 +154,25 @@ const editBarbershop = async (req, res) => {
                     phone = IFNULL(?, phone) 
             WHERE id = ?`, [business_name, description, address, open_time, close_time, phone, userBarbershopID]
         );
-        
 
+        if(imagesFiles?.length > 0){
+            // Delete previous images 
+            const [imagesDelete] = await dbConnection.execute("DELETE FROM barbershop_images WHERE barbershop_id = ?", [userBarbershopID]);
+    
+            // Insert new Ones
+            for(const image of imagesFiles){
+                await dbConnection.execute("INSERT INTO barbershop_images (barbershop_id, image_path) VALUES (?, ?)", [userBarbershopID, image.filename])
+            }
+        }
 
+        if(servicesObject?.length > 0){
+            const [servicesDelete] = await dbConnection.execute("DELETE FROM barbershop_services WHERE barbershop_id = ?", [userBarbershopID]);
 
-        // step 03 -- Commit if everything goes well
+            for(const service of servicesObject){
+                await dbConnection.execute("INSERT INTO barbershop_services (barbershop_id, service, price) VALUES (?, ?, ?)", [userBarbershopID, service.service, service.price])
+            }
+        }
+
         await dbConnection.commit();
 
         return res.status(201).json({ message: "Updated successfully!" });
@@ -170,7 +180,6 @@ const editBarbershop = async (req, res) => {
     }
     catch(error){
         
-        // step 03 -- Rollback if something goes wrong
         await dbConnection.rollback();
         
         console.log( "Error updating data: ", error.message);
@@ -178,7 +187,6 @@ const editBarbershop = async (req, res) => {
         res.status(500).json({message: error.message || "Internal server error"});
     }
     finally {
-        // step 04 -- Realease the connection back to the pool1
         dbConnection.release();
     }
 }
