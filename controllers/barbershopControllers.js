@@ -156,6 +156,10 @@ const editBarbershop = async (req, res) => {
             WHERE id = ?`, [business_name, description, address, open_time, close_time, phone, userBarbershopID]
         );
 
+
+        
+        // it might happen that if the images are deleted from DB and system, but then any of the 'services' queries fails, the db will rollback, but the images would be gone anyway
+
         if(imagesFiles?.length > 0){
             // Get image_url of barbershop to delete from system
             const [barbershop_images] = await dbConnection.execute("SELECT image_path FROM barbershop_images WHERE barbershop_id = ?", [userBarbershopID]);

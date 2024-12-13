@@ -2,8 +2,9 @@ const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 require("dotenv").config();
-const userRoutes = require("./routes/userRoutes.js");
+const authRoutes = require("./routes/authRoutes.js");
 const barbershopRoutes = require("./routes/barbershopRoutes.js");
+const usersRoutes = require("./routes/usersRoutes.js");
 
 
 const app = express();
@@ -28,8 +29,9 @@ app.use(express.static("uploads"));
 
 
 // routes
-app.use("/api/auth", userRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/barbershop", barbershopRoutes);
+app.use("/api/users", usersRoutes);
 
 
 
