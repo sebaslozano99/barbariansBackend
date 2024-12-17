@@ -1,11 +1,11 @@
 const { Router } = require("express");
-const { getAllBarbers } = require("../controllers/usersControllers.js");
+const { getAllBarbers, getSingleBarbershop } = require("../controllers/usersControllers.js");
 
 const usersRoutes = Router();
 
 
 usersRoutes.get("/getallbarbers", getAllBarbers);
-
+usersRoutes.get("/getsinglebarbershop/:barbershopID", getSingleBarbershop);
 
 
 

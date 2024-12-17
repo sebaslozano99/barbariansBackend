@@ -13,7 +13,6 @@ const validateTokenOnPageReload = async (req, res) => {
     jwt.verify(token, process.env.JWT_SECRET_KEY, (error, decoded) => {
         if(error) return res.status(401).json({message: "Invalid token"});
 
-        // console.log(decoded);
         const { id, first_name, last_name, email, role } = decoded;
         return res.json({id, first_name, last_name, email, role});
     })

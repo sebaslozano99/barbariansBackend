@@ -5,6 +5,7 @@ const fs = require("fs");
 
 // GET request
 const getProfile = async (req, res) => {
+    
     const { userID } = req.params;
 
     // step 01 -- begin transaction
@@ -131,7 +132,6 @@ const editBarbershop = async (req, res) => {
     const { userID } = req.params;
     const { business_name, description, address, open_time, close_time, phone, services } = req.body;
     const imagesFiles = req.files;
-
 
     const servicesObject = services?.map((service) => JSON.parse(service)); 
 
