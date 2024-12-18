@@ -50,6 +50,7 @@ const getProfile = async (req, res) => {
     }
     catch(error){
         // step 03 -- rollback if any of the transactions fails
+        console.error(error);
         await dbConnection.rollback();
         res.status(500).json({message: error.message || "Internal server error!"});
     }

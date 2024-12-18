@@ -50,6 +50,7 @@ const signup = async (req, res) => {
 
     }
     catch(error){
+        console.error(error);
         res.status(500).json({message: error.message || "Internal server error"});
     }
 }
@@ -92,6 +93,7 @@ const logout = async (req, res) => {
         res.status(200).json({message: "Logged out sucessfully!"});
     }
     catch(error){
+        console.error(error);
         res.status(500).json({message: error.message || "Internal server error"});
     }
 }
