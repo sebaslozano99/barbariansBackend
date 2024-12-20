@@ -2,13 +2,10 @@ const database = require("../config/database.js");
 
 
 const getAllBarbers = async (req, res) => {
-    
-    const dbConnection = await database.getConnection();
-    await dbConnection.beginTransaction();
 
     try {
 
-        const [barbershopsInfo] = await dbConnection.execute(`
+        const [barbershopsInfo] = await database.execute(`
             SELECT 
                 barbershops.id AS barbershop_id,
                 business_name,
@@ -53,17 +50,11 @@ const getAllBarbers = async (req, res) => {
             })
         });
 
-        await dbConnection.commit();
-
         res.status(200).json(structuredBarbershopsData);
     }
     catch(error){
         console.error(error);
-        await dbConnection.rollback();
         res.status(500).json({message: error.message || "Internal Server Error!"});
-    }
-    finally {
-        dbConnection.release()
     }
 }
 
@@ -85,21 +76,31 @@ const getSingleBarbershop = async (req, res) => {
                 open_time,
                 close_time,
                 phone,
-                JSON_ARRAYAGG(
+
+                (SELECT JSON_ARRAYAGG(
                     JSON_OBJECT(
-                        'image_id', barbershop_images.id,
-                        'image_path', barbershop_images.image_path
+                        'image_id', image.id,
+                        'image_path', image.image_path
                     )
-                ) AS images
+                )
+
+                FROM barbershop_images image
+                WHERE image.barbershop_id = barbershops.id) AS images,
+
+                (SELECT JSON_ARRAYAGG(
+                    JSON_OBJECT(
+                        'service_id', service.id,
+                        'service_price', service.price,
+                        'service_service', service.service
+                    )
+                )
+                    
+                FROM barbershop_services service
+                WHERE service.barbershop_id = barbershops.id) AS services
             FROM barbershops
-            JOIN barbershop_images ON barbershop_images.barbershop_id = barbershops.id
-            WHERE barbershops.id = ?
-            GROUP BY barbershops.id
+            WHERE barbershops.id = ?;
             `, 
         [barbershopID]);
-
-
-        const [services] = await database.execute("SELECT id, service, price FROM barbershop_services WHERE barbershop_id = ?", [barbershopID]);
 
         if(!barbershopsInfo.length) return res.status(404).json({message: "Barbershop was not found!"});
 
@@ -113,7 +114,7 @@ const getSingleBarbershop = async (req, res) => {
             close_time: barbershopsInfo[0].close_time, 
             phone: barbershopsInfo[0].phone, 
             images: barbershopsInfo[0].images, 
-            services: services
+            services: barbershopsInfo[0].services
         }
 
         res.status(200).json(barbershopData);
