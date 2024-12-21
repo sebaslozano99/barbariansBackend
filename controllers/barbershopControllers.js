@@ -1,4 +1,5 @@
 const database = require("../config/database.js");
+const getBarbershopInformation = require("../models/barbershopModel.js");
 const fs = require("fs");
 
 
@@ -17,7 +18,6 @@ const getProfile = async (req, res) => {
         // fetch barbershop's information
         const [rows] = await dbConnection.execute(`
         SELECT 
-            users.id AS user_id,
             barbershops.id AS barbershop_id,
             business_name,
             description,
@@ -25,12 +25,15 @@ const getProfile = async (req, res) => {
             open_time,
             close_time,
             phone
-        FROM users
-        INNER JOIN barbershops ON barbershops.user_id = ?
-        WHERE users.id = ?`, [userID, userID]);
+        FROM barbershops
+        WHERE user_id = ?`, [userID]);
+
+        const barberInfo = await getBarbershopInformation(userID);
 
         // send empty array
-        if(!rows.length) return res.status(200).json(rows);
+        if(!rows.length){
+            return res.status(200).json(rows);
+        }
 
         const barbershopID = rows[0].barbershop_id;
 
@@ -45,7 +48,8 @@ const getProfile = async (req, res) => {
         // step 03 -- commit if all transactions go through successfully!
         await dbConnection.commit();
 
-        res.status(200).json(barbershopInformation);
+        console.log(barberInfo);
+        res.status(200).json({hello: barbershopInformation, barberInfo: barberInfo});
 
     }
     catch(error){

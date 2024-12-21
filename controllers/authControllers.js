@@ -3,6 +3,9 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
+const { getUserByEmail, createNewUser } = require("../models/authModel.js");
+
+
 
 
 const validateTokenOnPageReload = async (req, res) => {
@@ -32,14 +35,13 @@ const signup = async (req, res) => {
 
     try{
         //make sure Email address is Unique before initializing insertion
-        const [rows] = await database.execute("SELECT * FROM users WHERE email = ?", [email]);
+        const rows = await getUserByEmail(email);
 
         if(rows.length) return res.status(409).json({message: "Email already exists!"});
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const [result] = await database.execute(`INSERT INTO users (first_name, last_name, email, password, role) VALUES 
-        (?, ?, ?, ?, ?)`, [first_name, last_name, email, hashedPassword, role]);
+        const result = await createNewUser({first_name, last_name, email, hashedPassword, role});
 
         const user = { id: result.insertId, first_name, last_name, email, role };
 
@@ -65,7 +67,7 @@ const login = async (req, res) => {
 
     try{
         //Make sure exists an user with email provided
-        const [rows] = await database.execute("SELECT * FROM users WHERE email = ?", [email]);
+        const rows = await getUserByEmail(email);
 
         if(!rows.length) return res.status(404).json({message: "User doesn't exist!"});
 

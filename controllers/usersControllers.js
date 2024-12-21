@@ -76,29 +76,30 @@ const getSingleBarbershop = async (req, res) => {
                 open_time,
                 close_time,
                 phone,
-
-                (SELECT JSON_ARRAYAGG(
+                JSON_ARRAYAGG(
                     JSON_OBJECT(
-                        'image_id', image.id,
-                        'image_path', image.image_path
+                        'image_id', barbershop_images.id,
+                        'image_path', barbershop_images.image_path
                     )
-                )
+                ) AS images,
 
-                FROM barbershop_images image
-                WHERE image.barbershop_id = barbershops.id) AS images,
+                (
+                    SELECT 
+                        JSON_ARRAYAGG(
+                            JSON_OBJECT(
+                                'service_id', service.id,
+                                'service_price', service.price,
+                                'service_service', service.service
+                            )
+                        )
+                    FROM barbershop_services service
+                    WHERE service.barbershop_id = barbershops.id
+                ) AS services
 
-                (SELECT JSON_ARRAYAGG(
-                    JSON_OBJECT(
-                        'service_id', service.id,
-                        'service_price', service.price,
-                        'service_service', service.service
-                    )
-                )
-                    
-                FROM barbershop_services service
-                WHERE service.barbershop_id = barbershops.id) AS services
             FROM barbershops
-            WHERE barbershops.id = ?;
+            LEFT JOIN barbershop_images ON barbershop_images.barbershop_id = barbershops.id
+            WHERE barbershops.id = ?
+            GROUP BY barbershops.id;
             `, 
         [barbershopID]);
 
