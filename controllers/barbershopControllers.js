@@ -9,58 +9,18 @@ const getProfile = async (req, res) => {
     
     const { userID } = req.params;
 
-    // step 01 -- begin transaction
-    const dbConnection = await database.getConnection();
-    await dbConnection.beginTransaction();
-
-    // step 02 -- execute all transactions
     try {
-        // fetch barbershop's information
-        const [rows] = await dbConnection.execute(`
-        SELECT 
-            barbershops.id AS barbershop_id,
-            business_name,
-            description,
-            address,
-            open_time,
-            close_time,
-            phone
-        FROM barbershops
-        WHERE user_id = ?`, [userID]);
 
-        const barberInfo = await getBarbershopInformation(userID);
+        const barbershopInfo = await getBarbershopInformation(userID);
 
-        // send empty array
-        if(!rows.length){
-            return res.status(200).json(rows);
-        }
+        if(!barbershopInfo.length) return res.status(200).json(rows);
 
-        const barbershopID = rows[0].barbershop_id;
-
-        //fetch barbershop's images
-        const [images] = await dbConnection.execute("SELECT id AS image_id, image_path FROM barbershop_images WHERE barbershop_id = ?", [barbershopID]);
-
-        // fetch barbershop's services
-        const [services] = await dbConnection.execute("SELECT service, price FROM barbershop_services WHERE barbershop_id = ?", [barbershopID]);
-
-        const barbershopInformation = { ...rows[0], images, services };
-
-        // step 03 -- commit if all transactions go through successfully!
-        await dbConnection.commit();
-
-        console.log(barberInfo);
-        res.status(200).json({hello: barbershopInformation, barberInfo: barberInfo});
+        res.status(200).json(barbershopInfo[0]);
 
     }
     catch(error){
-        // step 03 -- rollback if any of the transactions fails
         console.error(error);
-        await dbConnection.rollback();
         res.status(500).json({message: error.message || "Internal server error!"});
-    }
-    finally {
-        // step 04 -- release db connection
-        dbConnection.release();
     }
 
 }
