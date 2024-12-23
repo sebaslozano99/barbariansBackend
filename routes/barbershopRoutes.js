@@ -8,7 +8,7 @@ const barbershopRoutes = Router();
 
 
 barbershopRoutes.get("/profile/:userID", getProfile);
-barbershopRoutes.post("/setup", upload.array("images", 10) , postBarbershop);
+barbershopRoutes.post("/setup", upload.array("images", 10), postBarbershop);
 barbershopRoutes.put("/edit/:userID", upload.array("images", 10), editBarbershop);
 
 

@@ -1,5 +1,5 @@
 const database = require("../config/database.js");
-const getBarbershopInformation = require("../models/barbershopModel.js");
+const { getBarbershopInformation, createBarbershop } = require("../models/barbershopModel.js");
 const fs = require("fs");
 
 
@@ -13,7 +13,7 @@ const getProfile = async (req, res) => {
 
         const barbershopInfo = await getBarbershopInformation(userID);
 
-        if(!barbershopInfo.length) return res.status(200).json(rows);
+        if(!barbershopInfo.length) return res.status(200).json(barbershopInfo);
 
         res.status(200).json(barbershopInfo[0]);
 
@@ -37,37 +37,11 @@ const postBarbershop = async (req, res) => {
     // services is an array of objects that was stringyfied in the FormData so that I could be read here
     const servicesObject = services.map((service) => JSON.parse(service));
 
-    // STEPS FOR ATOMIC transaction  -- Either all queries go through or all fail
-
-    // step 01 -- start db transaction
-    const dbConnection = await database.getConnection();
-    await dbConnection.beginTransaction();
-
-    // step 02 -- execute all the transactions 
     try {
-        const [result] = await dbConnection.execute("INSERT INTO barbershops (user_id, business_name, description, address, open_time, close_time, phone) VALUES (?, ?, ?, ?, ?, ?, ?)", [user_id, business_name, description, address, open_time, close_time, phone]);
-
-        const newBarbershopID = result.insertId;
-
-        for (const image of imagesFiles) {
-            await dbConnection.execute("INSERT INTO barbershop_images (barbershop_id, image_path) VALUES (?, ?)", [newBarbershopID, image.filename]);
-        }
-
-        for (const service of servicesObject) {
-            await dbConnection.execute("INSERT INTO barbershop_services (barbershop_id, service, price) VALUES (?, ?, ?)", [newBarbershopID, service.service, service.price]);
-        }
-        
-
-        // step 03 -- Commit if everything goes well
-        await dbConnection.commit();
-
+        await createBarbershop({user_id, business_name, description, address, open_time, close_time, phone, imagesFiles, servicesObject});
         return res.status(201).json({ message: "Barbershop set up successfully!" });
-
     }
     catch(error){
-        
-        // step 03 -- Rollback if something goes wrong
-        await dbConnection.rollback();
         
         console.log( "Error inserting data: ", error.message);
 
@@ -80,10 +54,6 @@ const postBarbershop = async (req, res) => {
         }
 
         res.status(500).json({message: error.message || "Internal server error"});
-    }
-    finally {
-        // step 04 -- Realease the connection back to the pool1
-        dbConnection.release();
     }
 }
 
